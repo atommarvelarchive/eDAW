@@ -312,6 +312,7 @@ viewProto.prototype.init = function(){
     self.commandList = document.getElementById("commands");
     self.initPiano(48,30);
     self.initOscTypes();
+    self.initRecorder();
     self.initDetuneSlider();
     console.log("view initialized");
 };
@@ -370,12 +371,18 @@ viewProto.prototype.initOscTypes = function(){
                                                                                 }]));
     self.oscBtnGroup.Rmap.fn.setOscType = function(btn){ synthMachine.setOscillatorType(btn.getAttribute("id")); };
 }
+viewProto.prototype.initRecorder = function() {
+    var self = this;
+    self.recBtnGroup = new buttonGroupProto("toggle", new mapperProto("recordManager",[{
+                                                                                        "toggleRecordingMode": {ary:["record"]},
+                                                                                        "playTrack": {ary:["play"]}
+                                                                                      }]));
+    self.recBtnGroup.Rmap.fn.toggleRecordingMode = function(){recordManager.toggleRecordingMode()};
+    self.recBtnGroup.Rmap.fn.playTrack = function(){recordManager.playTrack("synth");};
+}
 viewProto.prototype.initDetuneSlider = function() {
     var self = this;
     self.detuneSlider = new sliderProto(-150,150,1,"detune",(function(val){synthMachine.detune(val)}));
-}
-viewProto.prototype.initRecorder = function() {
-    var self = this;
 }
 viewProto.prototype.pianoKeyDown = function(note){
     var elem = document.getElementById("p"+note);
@@ -421,7 +428,7 @@ buttonGroupProto.prototype.init = function(selectionMode, map){
         self.buttons.push(keyBtn);
         keyBtn.onclick = function(){
                                     self.selectButton(keyBtn);
-                                    self.Rmap.exe(key,keyBtn);};
+        };                            
     })(key);}
 }
 buttonGroupProto.prototype.setButtonMode = function(btn, mode){
@@ -441,23 +448,17 @@ buttonGroupProto.prototype.selectButton = function(btn){
     switch(self.selectionMode){
         case "single":
             for(button in self.buttons){
-                self.setButtonMode(self.buttons[button], "-singleOff");
+                self.setButtonMode(self.buttons[button], "-singleoff");
             }
-            self.setButtonMode(btn,"-singleOn");
+            self.setButtonMode(btn,"-singleon");
             self.Rmap.exe(btn.getAttribute("id"), btn);
             break;
        case "toggle":
-            var isOn = JSON.parse(btn.getAttribute("data-isOn"));
-
-            if(isOn){
-//TODO RESUME
-                btn.innerText = btn.getAttribute("data-on") || btn.innerText;
-                self.setButtonMode(btn, "-toggleOn");
-            }
-            else{
-                btn.innerText = btn.getAttribute("data-off") || btn.innerText;
-            }
-            self.setButtonMode(btn,"-toggle");
+            var oldState = JSON.parse(btn.getAttribute("data-ison"));
+            var newState = oldState ? "off" : "on";
+            btn.setAttribute("data-ison", !oldState);
+            btn.innerText = btn.getAttribute("data-"+newState) || btn.innerText;
+            self.setButtonMode(btn, "-toggle"+newState);
             self.Rmap.exe(btn.getAttribute("id"), btn);
             break;
     }
