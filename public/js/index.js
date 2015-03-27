@@ -43,12 +43,44 @@ synthMachineProto.prototype.init = function (trackName) {
     {   //Map 1
         "chordOn_M": {ary:[145]},
         "chordOff_M": {ary:[129]}
-    }]);
+    },
+    {   //Map 2
+        "chordOn_M7": {ary:[145]},
+        "chordOff_M7": {ary:[129]}
+    },
+    {   //Map 3
+        "chordOn_m": {ary:[145]},
+        "chordOff_m": {ary:[129]}
+    },
+    {   //Map 4
+        "chordOn_m7": {ary:[145]},
+        "chordOff_m7": {ary:[129]}
+    },
+    {   //Map 5
+        "chordOn_dim": {ary:[145]},
+        "chordOff_dim": {ary:[129]}
+    },
+    {   //Map 6
+        "chordOn_hdim7": {ary:[145]},
+        "chordOff_hdim7": {ary:[129]}
+    }
+    ]);
+    //Setup all the map functions
     self.MRMap.fn.noteOn = function(message){self.noteOn(message)};
     self.MRMap.fn.noteOff = function(message){self.noteOff(message)};
     self.MRMap.fn.chordOn_M = function(message){self.playNotes("On", musicTheory.M_Chord(message))};
     self.MRMap.fn.chordOff_M = function(message){self.playNotes("Off", musicTheory.M_Chord(message))};
-    //self.MRMap.loadMap(self.MRMap.maps[1]);
+    self.MRMap.fn.chordOn_M7 = function(message){self.playNotes("On", musicTheory.M7_Chord(message))};
+    self.MRMap.fn.chordOff_M7 = function(message){self.playNotes("Off", musicTheory.M7_Chord(message))};
+    self.MRMap.fn.chordOn_m = function(message){self.playNotes("On", musicTheory.m_Chord(message))};
+    self.MRMap.fn.chordOff_m = function(message){self.playNotes("Off", musicTheory.m_Chord(message))};
+    self.MRMap.fn.chordOn_m7 = function(message){self.playNotes("On", musicTheory.m7_Chord(message))};
+    self.MRMap.fn.chordOff_m7 = function(message){self.playNotes("Off", musicTheory.m7_Chord(message))};
+    self.MRMap.fn.chordOn_dim = function(message){self.playNotes("On", musicTheory.dim_Chord(message))};
+    self.MRMap.fn.chordOff_dim = function(message){self.playNotes("Off", musicTheory.dim_Chord(message))};
+    self.MRMap.fn.chordOn_hdim7 = function(message){self.playNotes("On", musicTheory.hdim7_Chord(message))};
+    self.MRMap.fn.chordOff_hdim7 = function(message){self.playNotes("Off", musicTheory.hdim7_Chord(message))};
+    //self.MRMap.loadMap(self.MRMap.maps[6]);
     //self.setOscillatorType("triangle");
     console.log("synthMachine initialized");
 };
@@ -295,13 +327,13 @@ musicTheoryProto.prototype.init = function(){
 };
 musicTheoryProto.prototype.generateChord = function(message, modifiers){
     var self = this,
-        root = message[1],
-        id = message[0],
-        weight = message[2],
-        delta = message[3],
+        root = message.midi[1],
+        id = message.midi[0],
+        weight = message.midi[2],
+        delta = message.midi[3],
         result = [];
     for(note in modifiers){
-        result.push([id,root+modifiers[note],weight,delta]);
+        result.push({midi:[id,root+modifiers[note],weight,delta]});
     }
     return result;
 }

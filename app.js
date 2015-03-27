@@ -9,22 +9,24 @@ var midi = require('midi'),
 app.use(express.static(__dirname + '/public')); // for static resources in the public folder
 app.set('view engine', 'ejs'); // set up ejs for templating
 
-// Set up a new input.
-var input = new midi.input();
-// Count the available input ports.
-if (input.getPortCount() > 0){
-    // Get the name of a specified input port.
-    input.getPortName(0);
-    // Open the first available input port.
-    input.openPort(0);
+function initMidi(){
+    // Set up a new input.
+    var input = new midi.input();
+    // Count the available input ports.
+    if (input.getPortCount() > 0){
+        // Get the name of a specified input port.
+        input.getPortName(0);
+        // Open the first available input port.
+        input.openPort(0);
 
-    // Configure a callback.
-    input.on('message', function(deltaTime, message) {
-      //var msg = '1: m:' + message + ' d:' + deltaTime;
-      message.push(deltaTime);
-      console.log(message);
-      io.sockets.emit('midiMessage', message);
-    });
+        // Configure a callback.
+        input.on('message', function(deltaTime, message) {
+          //var msg = '1: m:' + message + ' d:' + deltaTime;
+          message.push(deltaTime);
+          console.log(message);
+          io.sockets.emit('midiMessage', message);
+        });
+    }
 }
 
 app.get('/', function(req, res) {
@@ -38,6 +40,7 @@ io.sockets.on('connection', function(socket) {
 });
 
 
+//initMidi();
 // tells the server to listen to port 9000
 server.listen(port);
 console.log('app started on port '+port);
