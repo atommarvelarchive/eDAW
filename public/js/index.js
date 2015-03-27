@@ -483,6 +483,8 @@ sliderProto.prototype.init = function(min,max,step,name,callback){
 // TODO: Effects Manager
 // TODO: Effects Manager Delay
 // TODO: Custom wave tables
+// TODO: Multi-tracks
+// TODO: Looping
 
 context.createGain(); //annoyingly, chromium-based browser's AudioContext.currentTime() doesn't start incrementing until you create a node.
 recordManager = new recordManagerProto();
