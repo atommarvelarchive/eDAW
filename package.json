@@ -1,0 +1,11 @@
+{
+	"name": "jamsjs",
+	"version": "0.1.0",
+	"description": "A web-based music studio",
+	"dependencies": {
+		"express": "4.x",
+		"ejs": "*",
+		"midi": "*",
+		"socket.io": "*"
+	}
+}
