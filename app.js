@@ -24,8 +24,10 @@ function initMidi(){
           //var msg = '1: m:' + message + ' d:' + deltaTime;
           message.push(deltaTime);
           console.log(message);
-          io.sockets.emit('midiMessage', message);
+          io.sockets.emit('midiMessage', {midi: message});
         });
+    } else {
+        console.log('no available ports');
     }
 }
 
@@ -40,7 +42,7 @@ io.sockets.on('connection', function(socket) {
 });
 
 
-//initMidi();
+initMidi();
 // tells the server to listen to port 9000
 server.listen(port);
 console.log('app started on port '+port);

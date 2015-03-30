@@ -1,3 +1,9 @@
+/* Util */
+.mrg-top-1em
+{
+    margin-top: 1em;
+}
+
 /* Console */
 .consoleContainer
 {
@@ -53,10 +59,10 @@
 }
 
 /* Osc Types */
-.oscType-singleoff  ,.recordManager-toggleoff{
+.oscType-singleoff  ,.recordManager-toggleoff, .trk-singleoff{
     width:100%;
 }
-.oscType-singleon  ,.recordManager-toggleon{
+.oscType-singleon  ,.recordManager-toggleon, .trk-singleon{
    width:100%;
    color: white;
    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);

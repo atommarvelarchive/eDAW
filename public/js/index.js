@@ -7,7 +7,11 @@ var socket,
     musicTheoryProto = function() {this.init()},
     buttonGroupProto = function(selectionMode, map) {this.init(selectionMode,map)},
     sliderProto = function(min,max,step,name, callback) {this.init(min,max,step,name,callback)},
-    viewProto = function () {this.init()};
+    viewProto = function () {this.init()},
+    config = {
+        noteOn: 144,
+        noteOff: 128
+    };
 
 function initSocketIO () {
     view.logToBrowser("io init", "io");
@@ -18,16 +22,15 @@ function initSocketIO () {
         view.logToBrowser("Connection Established", "io");
     });
     socket.on('midiMessage', function(data) {
-        hardwareHandler.interpretMidi(data);
+        hardwareHandler.interpretMidi("keyboard",data);
     });
 }
 
-synthMachineProto.prototype.init = function (trackName) {
+synthMachineProto.prototype.init = function () {
     var self = this;
     self.notesOn = {};
     self.lastNoteEvent = 0;
-    self.trackName = trackName;
-    recordManager.initTrack(trackName);
+    self.instName = 'synth';
 
     self.gain = context.createGain();
     self.gain.connect(context.destination);
@@ -37,32 +40,32 @@ synthMachineProto.prototype.init = function (trackName) {
     }
     self.MRMap = new mapperProto("synthMachine.MRMap", [  //MIDI Responsibility Map
     {    //Map 0
-         "noteOn": {ary: [145]},
-         "noteOff": {ary: [129]}
+         "noteOn": {ary: [config.noteOn]},
+         "noteOff": {ary: [config.noteOff]}
     },
     {   //Map 1
-        "chordOn_M": {ary:[145]},
-        "chordOff_M": {ary:[129]}
+        "chordOn_M": {ary:[config.noteOn]},
+        "chordOff_M": {ary:[config.noteOff]}
     },
     {   //Map 2
-        "chordOn_M7": {ary:[145]},
-        "chordOff_M7": {ary:[129]}
+        "chordOn_M7": {ary:[config.noteOn]},
+        "chordOff_M7": {ary:[config.noteOff]}
     },
     {   //Map 3
-        "chordOn_m": {ary:[145]},
-        "chordOff_m": {ary:[129]}
+        "chordOn_m": {ary:[config.noteOn]},
+        "chordOff_m": {ary:[config.noteOff]}
     },
     {   //Map 4
-        "chordOn_m7": {ary:[145]},
-        "chordOff_m7": {ary:[129]}
+        "chordOn_m7": {ary:[config.noteOn]},
+        "chordOff_m7": {ary:[config.noteOff]}
     },
     {   //Map 5
-        "chordOn_dim": {ary:[145]},
-        "chordOff_dim": {ary:[129]}
+        "chordOn_dim": {ary:[config.noteOn]},
+        "chordOff_dim": {ary:[config.noteOff]}
     },
     {   //Map 6
-        "chordOn_hdim7": {ary:[145]},
-        "chordOff_hdim7": {ary:[129]}
+        "chordOn_hdim7": {ary:[config.noteOn]},
+        "chordOff_hdim7": {ary:[config.noteOff]}
     }
     ]);
     //Setup all the map functions
@@ -114,7 +117,7 @@ synthMachineProto.prototype.noteOn = function(message, future){
             self.notesOn["note"+message.midi[1]] = true;
          }
          if(recordManager.isRecording){
-            recordManager.writeMessage(message, "synth");
+            recordManager.writeMessage(message, self.instName);
          }
     } catch (e) { 
         console.log("synthMachine.noteOn broke on message: " + JSON.stringify(message));
@@ -141,7 +144,7 @@ synthMachineProto.prototype.noteOff = function(message, future){
             delete self.notesOn["note"+message.midi[1]];
          }
          if(recordManager.isRecording){
-            recordManager.writeMessage(message, "synth");
+            recordManager.writeMessage(message, self.instName);
          }
     }
     catch (e) {
@@ -170,12 +173,27 @@ recordManagerProto.prototype.init = function() {
     var self = this;
     self.lastNoteEvent = context.currentTime;
     self.isRecording = false;
+    self.curTrack = 'trk0';
     self.tracks = {};
+    self.initTrack('trk0');
+    self.initTrack('trk1');
+    self.initTrack('trk2');
+    self.initTrack('trk3');
     console.log("recordManager initialized");
 };
+recordManagerProto.prototype.ensureInstrument = function(instrument) {
+    var self = this;
+    if(typeof self.tracks[self.curTrack].inst[instrument] === 'undefined'){
+        self.tracks[self.curTrack].inst[instrument] = {ary: []};
+    }
+}
 recordManagerProto.prototype.initTrack = function(trackName) {
     var self = this;
-    self.tracks[trackName] = {name: trackName, ary: []};
+    self.tracks[trackName] = {name: trackName, inst: {}};
+}
+recordManagerProto.prototype.switchTrack = function(trackName) {
+    var self = this;
+    self.curTrack = trackName;
 }
 recordManagerProto.prototype.deltaTime = function() {
     var self = this,
@@ -189,22 +207,24 @@ recordManagerProto.prototype.toggleRecordingMode = function() {
     self.lastNoteEvent = context.currentTime;
     self.isRecording = !self.isRecording;
 };
-recordManagerProto.prototype.writeMessage = function(message, trackName) {
+recordManagerProto.prototype.writeMessage = function(message, instrument) {
     // TODO: implement and insert
     var self = this;
-    self.tracks[trackName].ary.push(message);
+    self.ensureInstrument(instrument)
+    self.tracks[self.curTrack].inst[instrument].ary.push(message);
 }
-recordManagerProto.prototype.playTrack = function(trackName) {
+recordManagerProto.prototype.playTrack = function() {
     var self = this;
     var totalFuture = 0;
-    for(index in self.tracks[trackName].ary){
-        //schedule the playing of this message
-        var message = {};
-        message = self.tracks[trackName].ary[index];
-        totalFuture += message.midi[3];
-        message.future = totalFuture;
-        synthMachine.MRMap.exe(message.midi[0],message);
-    }
+    for(inst in self.tracks[self.curTrack].inst)
+        for(index in self.tracks[self.curTrack].inst[inst].ary){
+            //schedule the playing of this message
+            var message = {};
+            message = self.tracks[self.curTrack].inst[inst].ary[index];
+            totalFuture += message.midi[3];
+            message.future = totalFuture;
+            synthMachine.MRMap.exe(message.midi[0],message);
+        }
 }
 // TODO: R/W MIDI files
 
@@ -214,7 +234,7 @@ hardwareHandlerProto.prototype.init = function() {
     self.shiftHeld = false;
     //Hardware Responsibility Map
     self.HRMap = new mapperProto("hardwareHandler.HRMap",[{
-                         "synthMidi": {ary: [65,87,83,69,68,70,84,71,89,72,85,74,75,79,76,80,186,219,222]},
+                         "synthMidi": {ary: [65,87,83,69,68,70,84,71,89,72,85,74,75,79,76,80,186,219,222,"keyboard"]},
                          "toggleShift": {ary: [16]}
                     }]);
     self.HRMap.fn.synthMidi = function(message){synthMachine.midiHandler(message)};
@@ -230,21 +250,21 @@ hardwareHandlerProto.prototype.initCompKeys = function() {
     addEventListener("keydown", function (e) {
         var key = self.keySynthToMidi(e.keyCode);
         if(!synthMachine.notesOn["note"+key]){
-            self.HRMap.exe(e.keyCode, {midi: [145, key,50, recordManager.deltaTime()]});
+            self.HRMap.exe(e.keyCode, {midi: [config.noteOn, key,50, recordManager.deltaTime()]});
         }
     });
 
     addEventListener("keyup", function (e) {
         var key = self.keySynthToMidi(e.keyCode);
-        self.HRMap.exe(e.keyCode,{midi: [129, key, 0, recordManager.deltaTime()]});
+        self.HRMap.exe(e.keyCode,{midi: [config.noteOff, key, 0, recordManager.deltaTime()]});
     });
 }
-hardwareHandlerProto.prototype.interpretMidi = function(message) {
+hardwareHandlerProto.prototype.interpretMidi = function(key, message) {
     var self = this;
     if (!message.midi[3])
     //TODO recordManager
         message.midi.push(recordManager.deltaTime());
-    self.HRMap.exe(message.midi[0],message);
+    self.HRMap.exe(key,message);
 }
 hardwareHandlerProto.prototype.keySynthToMidi = function(keycode) {
     //TODO: handle the rest of the keycodes
@@ -346,6 +366,7 @@ viewProto.prototype.init = function(){
     self.initOscTypes();
     self.initRecorder();
     self.initDetuneSlider();
+    self.initTracks();
     console.log("view initialized");
 };
 viewProto.prototype.initPiano = function(lowestC, keyCount /* must be an int and greater than 12 */){
@@ -396,6 +417,13 @@ viewProto.prototype.initPiano = function(lowestC, keyCount /* must be an int and
     container.appendChild(piano);
     insert.appendChild(container);
 }
+viewProto.prototype.initTracks = function(){
+    var self = this;
+    self.trkBtnGroup = new buttonGroupProto("single", new mapperProto("trk",[{
+                                                                                    "switchTrack": {ary:["trk0", "trk1","trk2","trk3"]}
+                                                                                }]));
+    self.trkBtnGroup.Rmap.fn.switchTrack = function(btn){ recordManager.switchTrack(btn.getAttribute("id")); };
+}
 viewProto.prototype.initOscTypes = function(){
     var self = this;
     self.oscBtnGroup = new buttonGroupProto("single", new mapperProto("oscType",[{
@@ -410,7 +438,7 @@ viewProto.prototype.initRecorder = function() {
                                                                                         "playTrack": {ary:["play"]}
                                                                                       }]));
     self.recBtnGroup.Rmap.fn.toggleRecordingMode = function(){recordManager.toggleRecordingMode()};
-    self.recBtnGroup.Rmap.fn.playTrack = function(){recordManager.playTrack("synth");};
+    self.recBtnGroup.Rmap.fn.playTrack = function(){recordManager.playTrack();};
 }
 viewProto.prototype.initDetuneSlider = function() {
     var self = this;
@@ -511,7 +539,7 @@ sliderProto.prototype.init = function(min,max,step,name,callback){
 
 
 // TODO: Slider class
-// TODO: Drum Machine
+// TODO: Drum Machine?
 // TODO: Effects Manager
 // TODO: Effects Manager Delay
 // TODO: Custom wave tables
