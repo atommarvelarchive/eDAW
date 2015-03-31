@@ -1,5 +1,3 @@
-//TODO: overwrite items when recording
-
 var socket,
     context = new AudioContext(),
     synthMachineProto = function (trackName) {this.init(trackName)},
@@ -186,7 +184,6 @@ recordManagerProto.prototype.init = function() {
     self.lastNoteEvent = context.currentTime;
     self.isRecording = false;
     self.tracks = {};
-    self.curTracks = {};
     for(var index = 0; index<tracks.length; index++){
         self.initTrack(tracks[index]);
     }
@@ -201,13 +198,12 @@ recordManagerProto.prototype.ensureInstrument = function(instrument, trackName) 
 }
 recordManagerProto.prototype.initTrack = function(trackName) {
     var self = this;
-    self.curTracks[trackName] = false;
-    self.tracks[trackName] = {name: trackName, inst: {}};
+    self.tracks[trackName] = {name: trackName, inst: {}, enabled: false};
     self.ensureInstrument("synth", trackName);
 }
 recordManagerProto.prototype.toggleTrack = function(trackName) {
     var self = this;
-    self.curTracks[trackName] = !self.curTracks[trackName];
+    self.tracks[trackName].enabled = !self.tracks[trackName].enabled;
 }
 recordManagerProto.prototype.deltaTime = function() {
     var self = this,
@@ -221,6 +217,12 @@ recordManagerProto.prototype.toggleRecordingMode = function() {
     self.lastNoteEvent = context.currentTime;
     self.isRecording = !self.isRecording;
     if(self.isRecording){
+        for(track in self.tracks){
+            if(self.tracks[track].enabled){
+                 self.initTrack(track);
+                 self.tracks[track].enabled = true;
+            }
+        }
         self.playTrack(true);
     }
 };
@@ -228,8 +230,8 @@ recordManagerProto.prototype.writeMessage = function(message, instrument) {
     // TODO: implement and insert
     try{
         var self = this;
-        for(track in self.curTracks){
-            if(self.curTracks[track] === true)
+        for(track in self.tracks){
+            if(self.tracks[track].enabled === true)
                 self.tracks[track].inst[instrument].ary.push(message);
         }
     } catch(e) {
@@ -239,8 +241,8 @@ recordManagerProto.prototype.writeMessage = function(message, instrument) {
 }
 recordManagerProto.prototype.playTrack = function(recording) {
     var self = this;
-    for(var song in self.curTracks){
-        if((recording && self.curTracks[song] === false) || (!recording && self.curTracks[song] === true)){
+    for(var song in self.tracks){
+        if((recording && self.tracks[song].enabled === false) || (!recording && self.tracks[song].enabled === true)){
             var totalFuture = 0;
             for(var index = 0;  index<self.tracks[song].inst["synth"].ary.length; index++){
                 //schedule the playing of this message
