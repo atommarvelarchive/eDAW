@@ -59,10 +59,10 @@
 }
 
 /* Osc Types */
-.oscType-singleoff  ,.recordManager-toggleoff, .trk-singleoff{
+.oscType-singleoff  ,.recordManager-toggleoff, .trk-toggleoff{
     width:100%;
 }
-.oscType-singleon  ,.recordManager-toggleon, .trk-singleon{
+.oscType-singleon  ,.recordManager-toggleon, .trk-toggleon{
    width:100%;
    color: white;
    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);

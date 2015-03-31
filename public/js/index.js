@@ -1,3 +1,5 @@
+//TODO: overwrite items when recording
+
 var socket,
     context = new AudioContext(),
     synthMachineProto = function (trackName) {this.init(trackName)},
@@ -101,7 +103,7 @@ synthMachineProto.prototype.createNoteSynth = function(midiNote) {
             gain: gain
             };
 };
-synthMachineProto.prototype.noteOn = function(message, future){
+synthMachineProto.prototype.noteOn = function(message){
     try{
          var self = this;
          if(self.notesOn["note"+message.midi[1]])
@@ -115,9 +117,9 @@ synthMachineProto.prototype.noteOn = function(message, future){
             view.logToBrowser("Note ON: "+message.midi[1], "keyboard-on");
             self.noteSynths["note"+message.midi[1]].gain.gain.value = message.midi[2]/400;
             self.notesOn["note"+message.midi[1]] = true;
-         }
-         if(recordManager.isRecording){
-            recordManager.writeMessage(message, self.instName);
+            if(recordManager.isRecording){
+               recordManager.writeMessage(message, self.instName);
+            }
          }
     } catch (e) { 
         console.log("synthMachine.noteOn broke on message: " + JSON.stringify(message));
@@ -142,9 +144,9 @@ synthMachineProto.prototype.noteOff = function(message, future){
             view.logToBrowser("Note OFF: "+message.midi[1], "keyboard-off"); 
             self.noteSynths["note"+message.midi[1]].gain.gain.value = 0;
             delete self.notesOn["note"+message.midi[1]];
-         }
-         if(recordManager.isRecording){
-            recordManager.writeMessage(message, self.instName);
+            if(recordManager.isRecording){
+               recordManager.writeMessage(message, self.instName);
+            }
          }
     }
     catch (e) {
@@ -171,29 +173,41 @@ synthMachineProto.prototype.detune = function(detune){
 
 recordManagerProto.prototype.init = function() {
     var self = this;
+    var tracks = [
+        "trk1",
+        "trk2",
+        "trk3",
+        "trk4",
+        "trk5",
+        "trk6",
+        "trk7",
+        "trk8"
+    ]
     self.lastNoteEvent = context.currentTime;
     self.isRecording = false;
-    self.curTrack = 'trk0';
     self.tracks = {};
-    self.initTrack('trk0');
-    self.initTrack('trk1');
-    self.initTrack('trk2');
-    self.initTrack('trk3');
+    self.curTracks = {};
+    for(var index = 0; index<tracks.length; index++){
+        self.initTrack(tracks[index]);
+    }
+    self.toggleTrack('trk1');
     console.log("recordManager initialized");
 };
-recordManagerProto.prototype.ensureInstrument = function(instrument) {
+recordManagerProto.prototype.ensureInstrument = function(instrument, trackName) {
     var self = this;
-    if(typeof self.tracks[self.curTrack].inst[instrument] === 'undefined'){
-        self.tracks[self.curTrack].inst[instrument] = {ary: []};
+    if(typeof self.tracks[trackName].inst[instrument] === 'undefined'){
+        self.tracks[trackName].inst[instrument] = { machine: new synthMachineProto(), ary: [] };
     }
 }
 recordManagerProto.prototype.initTrack = function(trackName) {
     var self = this;
+    self.curTracks[trackName] = false;
     self.tracks[trackName] = {name: trackName, inst: {}};
+    self.ensureInstrument("synth", trackName);
 }
-recordManagerProto.prototype.switchTrack = function(trackName) {
+recordManagerProto.prototype.toggleTrack = function(trackName) {
     var self = this;
-    self.curTrack = trackName;
+    self.curTracks[trackName] = !self.curTracks[trackName];
 }
 recordManagerProto.prototype.deltaTime = function() {
     var self = this,
@@ -206,25 +220,38 @@ recordManagerProto.prototype.toggleRecordingMode = function() {
     var self = this;
     self.lastNoteEvent = context.currentTime;
     self.isRecording = !self.isRecording;
+    if(self.isRecording){
+        self.playTrack(true);
+    }
 };
 recordManagerProto.prototype.writeMessage = function(message, instrument) {
     // TODO: implement and insert
-    var self = this;
-    self.ensureInstrument(instrument)
-    self.tracks[self.curTrack].inst[instrument].ary.push(message);
-}
-recordManagerProto.prototype.playTrack = function() {
-    var self = this;
-    var totalFuture = 0;
-    for(inst in self.tracks[self.curTrack].inst)
-        for(index in self.tracks[self.curTrack].inst[inst].ary){
-            //schedule the playing of this message
-            var message = {};
-            message = self.tracks[self.curTrack].inst[inst].ary[index];
-            totalFuture += message.midi[3];
-            message.future = totalFuture;
-            synthMachine.MRMap.exe(message.midi[0],message);
+    try{
+        var self = this;
+        for(track in self.curTracks){
+            if(self.curTracks[track] === true)
+                self.tracks[track].inst[instrument].ary.push(message);
         }
+    } catch(e) {
+        console.log("recordManager.writeMessage broke on: " + message);
+        console.log(e.message);
+    }
+}
+recordManagerProto.prototype.playTrack = function(recording) {
+    var self = this;
+    for(var song in self.curTracks){
+        if((recording && self.curTracks[song] === false) || (!recording && self.curTracks[song] === true)){
+            var totalFuture = 0;
+            for(var index = 0;  index<self.tracks[song].inst["synth"].ary.length; index++){
+                //schedule the playing of this message
+                var message = {};
+                message = self.tracks[song].inst["synth"].ary[index];
+                totalFuture += message.midi[3];
+                message.future = totalFuture;
+                self.tracks[song].inst["synth"].machine.MRMap.exe(message.midi[0],message);
+            }
+        }
+    }
 }
 // TODO: R/W MIDI files
 
@@ -237,7 +264,7 @@ hardwareHandlerProto.prototype.init = function() {
                          "synthMidi": {ary: [65,87,83,69,68,70,84,71,89,72,85,74,75,79,76,80,186,219,222,"keyboard"]},
                          "toggleShift": {ary: [16]}
                     }]);
-    self.HRMap.fn.synthMidi = function(message){synthMachine.midiHandler(message)};
+    self.HRMap.fn.synthMidi = function(message){liveSynthMachine.midiHandler(message)};
     self.HRMap.fn.toggleShift = function(){self.toggleShift()};
     self.initCompKeys();
     console.log("hardwareHandler initialized");
@@ -249,7 +276,7 @@ hardwareHandlerProto.prototype.initCompKeys = function() {
     var self = this;
     addEventListener("keydown", function (e) {
         var key = self.keySynthToMidi(e.keyCode);
-        if(!synthMachine.notesOn["note"+key]){
+        if(!liveSynthMachine.notesOn["note"+key]){
             self.HRMap.exe(e.keyCode, {midi: [config.noteOn, key,50, recordManager.deltaTime()]});
         }
     });
@@ -419,17 +446,17 @@ viewProto.prototype.initPiano = function(lowestC, keyCount /* must be an int and
 }
 viewProto.prototype.initTracks = function(){
     var self = this;
-    self.trkBtnGroup = new buttonGroupProto("single", new mapperProto("trk",[{
-                                                                                    "switchTrack": {ary:["trk0", "trk1","trk2","trk3"]}
+    self.trkBtnGroup = new buttonGroupProto("toggle", new mapperProto("trk",[{
+                                                                                    "toggleTrack": {ary:["trk1","trk2","trk3", "trk4", "trk5", "trk6", "trk7", "trk8"]}
                                                                                 }]));
-    self.trkBtnGroup.Rmap.fn.switchTrack = function(btn){ recordManager.switchTrack(btn.getAttribute("id")); };
+    self.trkBtnGroup.Rmap.fn.toggleTrack = function(btn){ recordManager.toggleTrack(btn.getAttribute("id")); };
 }
 viewProto.prototype.initOscTypes = function(){
     var self = this;
     self.oscBtnGroup = new buttonGroupProto("single", new mapperProto("oscType",[{
                                                                                     "setOscType": {ary:["sine", "square","triangle","sawtooth"]}
                                                                                 }]));
-    self.oscBtnGroup.Rmap.fn.setOscType = function(btn){ synthMachine.setOscillatorType(btn.getAttribute("id")); };
+    self.oscBtnGroup.Rmap.fn.setOscType = function(btn){ liveSynthMachine.setOscillatorType(btn.getAttribute("id")); };
 }
 viewProto.prototype.initRecorder = function() {
     var self = this;
@@ -442,7 +469,7 @@ viewProto.prototype.initRecorder = function() {
 }
 viewProto.prototype.initDetuneSlider = function() {
     var self = this;
-    self.detuneSlider = new sliderProto(-150,150,1,"detune",(function(val){synthMachine.detune(val)}));
+    self.detuneSlider = new sliderProto(-150,150,1,"detune",(function(val){liveSynthMachine.detune(val)}));
 }
 viewProto.prototype.pianoKeyDown = function(note){
     var elem = document.getElementById("p"+note);
@@ -549,7 +576,7 @@ sliderProto.prototype.init = function(min,max,step,name,callback){
 context.createGain(); //annoyingly, chromium-based browser's AudioContext.currentTime() doesn't start incrementing until you create a node.
 recordManager = new recordManagerProto();
 musicTheory = new musicTheoryProto();
-synthMachine = new synthMachineProto("synth");
+liveSynthMachine = new synthMachineProto("synth");
 hardwareHandler = new hardwareHandlerProto();
 view = new viewProto();
 initSocketIO();

@@ -18,18 +18,24 @@
             <div class="pure-u-1-5"><button class="pure-button recordManager-toggleoff"  id="record" data-on="Stop" data-off="Record" data-ison="false">Record</button></div>
             <div class="pure-u-1-5"><button class="pure-button recordManager-toggleoff" id="play" data-ison="false">Play</button></div>
         </div>
-        <div class="pure-u-1-4"></div>
+        
+   </div>
+   <div class"pure-g">
         <div class="pure-u-1-3">
             <div class="sliderContainer">
                 <label> Detune </label>
                 <input type="range" id="detune-slider" min="-150" max="150" class="v-slider"/>
             </div>
         </div>
-        <div class="pure-u-1-3 mrg-top-1em">
-            <div class="pure-u-1-5"><button class="pure-button trk-singleon"  id="trk0">Track 00</button></div>
-            <div class="pure-u-1-5"><button class="pure-button trk-singleoff"id="trk1">Track 01</button></div>
-            <div class="pure-u-1-5"><button class="pure-button trk-singleoff"id="trk2">Track 02</button></div>
-            <div class="pure-u-1-5"><button class="pure-button trk-singleoff"id="trk3">Track 03</button></div>
+        <div class="pure-u-2-3 mrg-top-1em">
+            <div class="pure-u-1-8"><button class="pure-button trk-toggleon" data-ison="true" id="trk1">Track 01</button></div>
+            <div class="pure-u-1-8"><button class="pure-button trk-toggleoff" data-ison="false" id="trk2">Track 02</button></div>
+            <div class="pure-u-1-8"><button class="pure-button trk-toggleoff" data-ison="false" id="trk3">Track 03</button></div>
+            <div class="pure-u-1-8"><button class="pure-button trk-toggleoff"  data-ison="false" id="trk4">Track 04</button></div>
+            <div class="pure-u-1-8"><button class="pure-button trk-toggleoff" data-ison="false" id="trk5">Track 05</button></div>
+            <div class="pure-u-1-8"><button class="pure-button trk-toggleoff" data-ison="false" id="trk6">Track 06</button></div>
+            <div class="pure-u-1-8"><button class="pure-button trk-toggleoff" data-ison="false" id="trk7">Track 07</button></div>
+            <div class="pure-u-1-8"><button class="pure-button trk-toggleoff" data-ison="false" id="trk8">Track 08</button></div>
         </div>
    </div>
    </br>
@@ -41,7 +47,6 @@
         <ul id="commands"></ul> 
         </div>
    </div> 
-<script type="application/javascript" src="/js/mappings.js"></script>
 <script type="application/javascript" src="/js/index.js"></script>
 </body>
 </html>
