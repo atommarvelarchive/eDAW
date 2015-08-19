@@ -1,4 +1,7 @@
-# TODO
+# eDAW
+My prototype for a Digital Audio Workstation using HTML5 Web Audio
+
+## TODO
 * Move to Electron
 * Convert most of the logic to be used specifically for node instead of a webpage
 * Integrate React
